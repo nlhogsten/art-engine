@@ -1,0 +1,59 @@
+# art-engine presets: Nate's style + social formats
+# Learned from @v.4ndal: raw lo-fi phone photos, flash-lit, heavy saturation,
+# candid found-weirdness, minimal on-image text (captions do the talking).
+
+formats:
+  story:      {w: 1080, h: 1920}
+  feed:       {w: 1080, h: 1350}
+  square:     {w: 1080, h: 1080}
+  reel_cover: {w: 1080, h: 1920}
+
+grade_presets:
+  vandal-raw:      # his default IG look
+    saturation: 1.35
+    contrast: 1.12
+    brightness: 1.02
+    warmth: 8
+    vignette: 0.15
+    grain: 0.04
+    sharpness: 1.15
+  clean-pop:
+    saturation: 1.2
+    contrast: 1.08
+    warmth: 4
+    vignette: 0.08
+    grain: 0.0
+    sharpness: 1.1
+  faded-film:
+    saturation: 0.85
+    contrast: 0.92
+    fade: 0.35
+    grain: 0.06
+    warmth: 10
+    vignette: 0.25
+  noir:
+    saturation: 0.0
+    contrast: 1.25
+    brightness: 0.95
+    grain: 0.05
+    vignette: 0.35
+  duotone-teal:
+    duotone: ["#0b2b33", "#7de8d3"]
+    contrast: 1.1
+    grain: 0.03
+
+text_styles:
+  meme:           # top/bottom caption energy
+    font: DejaVuSans-Bold
+    color: "#ffffff"
+    stroke_width: 4
+    stroke_color: "#000000"
+  minimal:
+    font: DejaVuSans
+    color: "#ffffff"
+    stroke_width: 0
+  sticker:
+    font: DejaVuSans-Bold
+    color: "#ffe14d"
+    stroke_width: 3
+    stroke_color: "#111111"
