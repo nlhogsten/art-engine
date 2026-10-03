@@ -1,0 +1,314 @@
+<div id="artboard-app" style="box-sizing:border-box;max-width:560px;margin:0 auto;padding:10px 12px;background:var(--hatch-widget-surface);border:1px solid var(--hatch-widget-border);border-radius:12px;color:var(--hatch-widget-text);font-family:system-ui,-apple-system,sans-serif;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <div style="font-weight:700;font-size:14px;flex:1;">Artboard</div>
+    <button id="ab-undo" title="Undo" style="font-size:14px;padding:2px 10px;border-radius:6px;border:1px solid var(--hatch-widget-border);background:var(--hatch-widget-surface);color:var(--hatch-widget-text);">↶</button>
+    <button id="ab-redo" title="Redo" style="font-size:14px;padding:2px 10px;border-radius:6px;border:1px solid var(--hatch-widget-border);background:var(--hatch-widget-surface);color:var(--hatch-widget-text);">↷</button>
+  </div>
+  <div style="font-size:11px;color:var(--hatch-widget-muted);margin-bottom:8px;">Drag a cover, or select one and nudge it with the arrows. Tell me <b>render</b> when it looks right.</div>
+  <div style="display:flex;justify-content:center;margin-bottom:8px;">
+    <div id="ab-canvas" style="position:relative;width:210px;flex:0 0 auto;border-radius:8px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:contain;border:1px solid var(--hatch-widget-border);"></div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:flex-start;">
+    <div id="ab-pad" style="display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px);gap:2px;flex:0 0 auto;touch-action:none;user-select:none;-webkit-user-select:none;">
+      <span></span><button data-dx="0" data-dy="-1" aria-label="up">▲</button><span></span>
+      <button data-dx="-1" data-dy="0" aria-label="left">◀</button><button id="ab-center" aria-label="center">●</button><button data-dx="1" data-dy="0" aria-label="right">▶</button>
+      <span></span><button data-dx="0" data-dy="1" aria-label="down">▼</button><span></span>
+    </div>
+    <div style="flex:1 1 auto;min-width:0;">
+      <select id="ab-format" style="width:100%;font-size:12px;background:var(--hatch-widget-surface-muted);color:var(--hatch-widget-text);border:1px solid var(--hatch-widget-border);border-radius:6px;padding:4px;margin-bottom:6px;"></select>
+      <label style="font-size:10px;color:var(--hatch-widget-muted);display:block;">Size <input id="ab-scale" type="range" min="0.2" max="2" step="0.01" style="width:100%;"></label>
+      <label style="font-size:10px;color:var(--hatch-widget-muted);display:block;">Rotate <input id="ab-rotate" type="range" min="-45" max="45" step="1" style="width:100%;"></label>
+      <label style="font-size:10px;color:var(--hatch-widget-muted);display:block;">Opacity <input id="ab-opacity" type="range" min="0.1" max="1" step="0.01" style="width:100%;"></label>
+    </div>
+  </div>
+  <div id="ab-chips" style="display:flex;gap:6px;overflow-x:auto;margin:8px 0;padding-bottom:2px;"></div>
+  <div id="ab-selrow" style="display:none;gap:6px;margin-bottom:8px;align-items:center;">
+    <span id="ab-selname" style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+    <button data-act="up" style="font-size:12px;padding:2px 9px;border-radius:5px;border:1px solid var(--hatch-widget-border);background:var(--hatch-widget-surface);color:var(--hatch-widget-text);">↑</button>
+    <button data-act="down" style="font-size:12px;padding:2px 9px;border-radius:5px;border:1px solid var(--hatch-widget-border);background:var(--hatch-widget-surface);color:var(--hatch-widget-text);">↓</button>
+    <button data-act="del" style="font-size:12px;padding:2px 9px;border-radius:5px;border:1px solid var(--hatch-widget-border);background:var(--hatch-widget-surface);color:var(--hatch-widget-text);">✕</button>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+    <select id="ab-add" style="font-size:12px;background:var(--hatch-widget-surface-muted);color:var(--hatch-widget-text);border:1px solid var(--hatch-widget-border);border-radius:6px;padding:4px;"></select>
+    <button id="ab-addbtn" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--hatch-widget-border);background:var(--hatch-widget-accent);color:var(--hatch-widget-on-accent);">Add</button>
+    <label style="font-size:11px;color:var(--hatch-widget-muted);display:flex;align-items:center;gap:4px;">Bg <input id="ab-bg" type="color" style="width:32px;height:22px;padding:0;border:1px solid var(--hatch-widget-border);border-radius:4px;background:none;"></label>
+    <button id="ab-reset" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--hatch-widget-border);background:var(--hatch-widget-surface-muted);color:var(--hatch-widget-text);margin-left:auto;">Reset</button>
+  </div>
+</div>
+<script>
+(function(){
+  var FORMATS = {story:[1080,1920], portrait:[1080,1350], square:[1080,1080], landscape:[1920,1080], pin:[1000,1500], thumb:[1280,720]};
+  var FORMAT_LABELS = {story:'Story / Reel (9:16)', portrait:'Feed portrait (4:5)', square:'Feed square (1:1)', landscape:'Landscape (16:9)', pin:'Pinterest (2:3)', thumb:'Thumbnail (16:9)'};
+  var DISPLAY_W = 210;
+  var THUMBS = %%THUMBS%%;
+  var DEFAULTS = { format:'story', canvas:[1080,1920], bg:{color:"#0d0d0c"}, layers: %%LAYERS%% };
+  var state = window.hatchWidget.getState(DEFAULTS);
+  if(!state.format) state.format = 'story';
+  state.layers.forEach(function(l){
+    if(l.fx == null){
+      var rw = (state.canvas||[1080,1920])[0], rh = (state.canvas||[1080,1920])[1];
+      l.fx = (l.cx||rw/2) / rw; l.fy = (l.cy||rh/2) / rh; l.fw = (l.base_w||520) / rw;
+      delete l.cx; delete l.cy; delete l.base_w;
+    }
+  });
+  var selected = null, dragId = null;
+
+  // ---- stale-echo guard: ignore bridge echoes of state older than our last save ----
+  var seq = (state._seq|0) || 0;
+  function save(){ state._seq = ++seq; window.hatchWidget.setState(state); }
+
+  // ---- undo / redo ----
+  var hist = [], future = [];
+  function snap(){ return JSON.parse(JSON.stringify({format:state.format, bg:state.bg, layers:state.layers})); }
+  function pushHistory(){
+    hist.push(snap()); if(hist.length > 60) hist.shift();
+    future.length = 0; syncUndo();
+  }
+  function applySnap(s){
+    state.format = s.format; state.bg = s.bg; state.layers = s.layers;
+    if(selected && !state.layers.some(function(l){ return l.id===selected; })) selected = null;
+    save(); render(); syncUndo();
+  }
+  function syncUndo(){
+    document.getElementById('ab-undo').disabled = !hist.length;
+    document.getElementById('ab-redo').disabled = !future.length;
+    document.getElementById('ab-undo').style.opacity = hist.length ? '1' : '0.35';
+    document.getElementById('ab-redo').style.opacity = future.length ? '1' : '0.35';
+  }
+  document.getElementById('ab-undo').addEventListener('click', function(){
+    if(!hist.length) return;
+    future.push(snap()); applySnap(hist.pop());
+  });
+  document.getElementById('ab-redo').addEventListener('click', function(){
+    if(!future.length) return;
+    hist.push(snap()); applySnap(future.pop());
+  });
+
+  var canvas = document.getElementById('ab-canvas');
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function fmtSize(){ return FORMATS[state.format] || FORMATS.story; }
+  function dispH(){ var s = fmtSize(); return DISPLAY_W * s[1] / s[0]; }
+  function layerAt(id){ return state.layers.find(function(x){ return x.id===id; }); }
+
+  function paintSelection(){
+    canvas.querySelectorAll('img.ab-layer').forEach(function(img){
+      var on = img.dataset.id === selected;
+      img.style.outline = on ? '2px solid var(--hatch-widget-accent)' : 'none';
+      img.style.outlineOffset = '-2px';
+      img.style.borderRadius = '4px';
+    });
+  }
+
+  function render(){
+    var dh = dispH();
+    canvas.style.height = dh + 'px';
+    canvas.style.background = state.bg.color;
+    canvas.querySelectorAll('img.ab-layer').forEach(function(n){ n.remove(); });
+    state.layers.forEach(function(l, i){
+      var img = document.createElement('img');
+      img.className = 'ab-layer';
+      img.src = THUMBS[l.id] || '';
+      img.draggable = false;
+      var w = l.fw * (l.scale||1) * DISPLAY_W;
+      img.style.cssText = 'position:absolute;left:'+(l.fx*DISPLAY_W)+'px;top:'+(l.fy*dh)+'px;width:'+w+'px;'
+        + 'transform:translate(-50%,-50%) rotate('+(l.rotate||0)+'deg);opacity:'+(l.opacity==null?1:l.opacity)+';'
+        + 'z-index:'+i+';cursor:grab;touch-action:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;';
+      img.dataset.id = l.id;
+      img.addEventListener('pointerdown', function(e){ if(e.pointerType === 'touch') return; startMouseDrag(e, l.id); });
+      canvas.appendChild(img);
+    });
+    paintSelection();
+    renderChips(); syncSelRow();
+    document.getElementById('ab-bg').value = state.bg.color;
+    document.getElementById('ab-format').value = state.format;
+  }
+
+  function renderChips(){
+    var box = document.getElementById('ab-chips');
+    box.innerHTML = '';
+    state.layers.forEach(function(l){
+      var c = document.createElement('button');
+      c.textContent = l.id;
+      c.style.cssText = 'flex:0 0 auto;font-size:11px;padding:4px 10px;border-radius:14px;border:1px solid '
+        + (l.id===selected ? 'var(--hatch-widget-accent)' : 'var(--hatch-widget-border)')
+        + ';background:' + (l.id===selected ? 'var(--hatch-widget-surface-muted)' : 'var(--hatch-widget-surface)')
+        + ';color:var(--hatch-widget-text);font-weight:' + (l.id===selected ? '700' : '400') + ';';
+      c.addEventListener('click', function(){ selected = l.id; paintSelection(); renderChips(); syncSelRow(); });
+      box.appendChild(c);
+    });
+  }
+  function syncSelRow(){
+    var cur = layerAt(selected);
+    var selrow = document.getElementById('ab-selrow');
+    if(cur){
+      selrow.style.display = 'flex';
+      document.getElementById('ab-selname').textContent = cur.id;
+      document.getElementById('ab-scale').value = cur.scale||1;
+      document.getElementById('ab-rotate').value = cur.rotate||0;
+      document.getElementById('ab-opacity').value = cur.opacity==null?1:cur.opacity;
+    } else { selrow.style.display = 'none'; }
+    renderChips(); syncUndo();
+  }
+
+  document.getElementById('ab-selrow').addEventListener('click', function(e){
+    var act = e.target.dataset && e.target.dataset.act;
+    if(!act || !selected) return;
+    var i = state.layers.findIndex(function(x){ return x.id===selected; });
+    if(i < 0) return;
+    pushHistory();
+    if(act === 'del'){ state.layers.splice(i,1); selected = null; }
+    else if(act === 'up' && i < state.layers.length-1){ var t=state.layers[i]; state.layers[i]=state.layers[i+1]; state.layers[i+1]=t; }
+    else if(act === 'down' && i > 0){ var t2=state.layers[i]; state.layers[i]=state.layers[i-1]; state.layers[i-1]=t2; }
+    save(); render();
+  });
+
+  // sliders: visual update live, history armed on first touch, save on release (cuts echo races)
+  function armOnce(el, fn){
+    var armed = false;
+    var arm = function(){ if(!armed){ armed = true; fn(); } };
+    var disarm = function(){ armed = false; };
+    el.addEventListener('pointerdown', arm);
+    el.addEventListener('focus', arm);
+    el.addEventListener('change', disarm);
+    el.addEventListener('blur', disarm);
+  }
+  [ ['ab-scale','scale'], ['ab-rotate','rotate'], ['ab-opacity','opacity'] ].forEach(function(p){
+    var el = document.getElementById(p[0]);
+    armOnce(el, pushHistory);
+    el.addEventListener('input', function(e){
+      var l = layerAt(selected); if(!l) return;
+      l[p[1]] = parseFloat(e.target.value);
+      var img = canvas.querySelector('img[data-id="'+l.id+'"]');
+      if(img){
+        if(p[1]==='scale') img.style.width = (l.fw*l.scale*DISPLAY_W)+'px';
+        if(p[1]==='rotate') img.style.transform = 'translate(-50%,-50%) rotate('+l.rotate+'deg)';
+        if(p[1]==='opacity') img.style.opacity = l.opacity;
+      }
+    });
+    el.addEventListener('change', function(){ save(); });
+  });
+  var bgEl = document.getElementById('ab-bg');
+  armOnce(bgEl, pushHistory);
+  bgEl.addEventListener('input', function(e){ state.bg.color = e.target.value; canvas.style.background = state.bg.color; });
+  bgEl.addEventListener('change', function(){ save(); });
+
+  // ---- drag: window-level move/end listeners attached at gesture start ----
+  function setFromPoint(l, clientX, clientY){
+    var r = canvas.getBoundingClientRect();
+    l.fx = Math.min(1.2, Math.max(-0.2, (clientX - r.left) / r.width));
+    l.fy = Math.min(1.2, Math.max(-0.2, (clientY - r.top) / r.height));
+  }
+  function positionOnly(id){
+    var l = layerAt(id); if(!l) return;
+    var img = canvas.querySelector('img[data-id="'+id+'"]');
+    if(img){ img.style.left = (l.fx*DISPLAY_W)+'px'; img.style.top = (l.fy*dispH())+'px'; }
+  }
+  function startMouseDrag(e, id){
+    e.preventDefault();
+    pushHistory();
+    selected = id; dragId = id; paintSelection(); syncSelRow();
+    var onMove = function(ev){ var l = layerAt(id); if(!l) return; setFromPoint(l, ev.clientX, ev.clientY); positionOnly(id); };
+    var onUp = function(){
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      dragId = null; save();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }
+  function onTouchStart(e){
+    var img = e.target.closest ? e.target.closest('img.ab-layer') : null;
+    if(!img) return;
+    e.preventDefault(); e.stopPropagation();
+    pushHistory();
+    selected = img.dataset.id; dragId = img.dataset.id;
+    paintSelection(); syncSelRow();
+    window.addEventListener('touchmove', onTouchMove, {passive:false});
+    window.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('touchcancel', onTouchEnd);
+  }
+  function onTouchMove(e){
+    if(!dragId) return;
+    e.preventDefault(); e.stopPropagation();
+    var l = layerAt(dragId); if(!l) return;
+    var t = e.touches[0];
+    setFromPoint(l, t.clientX, t.clientY);
+    positionOnly(dragId);
+  }
+  function onTouchEnd(){
+    window.removeEventListener('touchmove', onTouchMove);
+    window.removeEventListener('touchend', onTouchEnd);
+    window.removeEventListener('touchcancel', onTouchEnd);
+    if(!dragId) return;
+    dragId = null; save();
+  }
+  canvas.addEventListener('touchstart', onTouchStart, {passive:false});
+
+  // ---- nudge pad ----
+  var NUDGE = 12 / 1080;
+  function nudge(dx, dy){
+    var l = layerAt(selected); if(!l) return;
+    var s = fmtSize(), aspect = s[0] / s[1];
+    l.fx = Math.min(1.2, Math.max(-0.2, l.fx + dx * NUDGE));
+    l.fy = Math.min(1.2, Math.max(-0.2, l.fy + dy * NUDGE * aspect));
+    positionOnly(l.id);
+  }
+  document.getElementById('ab-pad').addEventListener('pointerdown', function(e){
+    var b = e.target.closest ? e.target.closest('button[data-dx]') : null;
+    if(!b || !selected) return;
+    e.preventDefault();
+    pushHistory();
+    var dx = parseFloat(b.dataset.dx), dy = parseFloat(b.dataset.dy);
+    nudge(dx, dy);
+    var iv = setInterval(function(){ nudge(dx, dy); }, 110);
+    var clear = function(){
+      clearInterval(iv); save();
+      window.removeEventListener('pointerup', clear);
+      window.removeEventListener('pointercancel', clear);
+    };
+    window.addEventListener('pointerup', clear);
+    window.addEventListener('pointercancel', clear);
+  });
+  document.getElementById('ab-center').addEventListener('click', function(){
+    var l = layerAt(selected); if(!l) return;
+    pushHistory();
+    l.fx = 0.5; l.fy = 0.5; save(); positionOnly(l.id);
+  });
+
+  // ---- format / add / reset ----
+  var fmtSel = document.getElementById('ab-format');
+  Object.keys(FORMATS).forEach(function(k){
+    var o = document.createElement('option'); o.value = k; o.textContent = FORMAT_LABELS[k]; fmtSel.appendChild(o);
+  });
+  fmtSel.addEventListener('change', function(){ pushHistory(); state.format = fmtSel.value; save(); render(); });
+  document.getElementById('ab-reset').addEventListener('click', function(){
+    pushHistory();
+    state = JSON.parse(JSON.stringify(DEFAULTS)); selected = null; save(); render();
+  });
+  var addSel = document.getElementById('ab-add');
+  Object.keys(THUMBS).forEach(function(id){
+    var o = document.createElement('option'); o.value = id; o.textContent = id; addSel.appendChild(o);
+  });
+  document.getElementById('ab-addbtn').addEventListener('click', function(){
+    var id = addSel.value;
+    var base = DEFAULTS.layers.find(function(l){ return l.id===id; }) || {};
+    pushHistory();
+    state.layers.push({ id:id, img:base.img, fx:0.5, fy:0.5, fw:base.fw||0.48, scale:1, rotate:0, opacity:1 });
+    selected = id; save(); render();
+  });
+
+  window.addEventListener('hatch-widget-state', function(e){
+    var s = e.detail && e.detail.state;
+    if(!s) return;
+    var ss = (s._seq|0) || 0;
+    if(ss !== 0 && ss <= seq) return; // stale echo of our own save — ignore
+    if(ss > seq) seq = ss;
+    state = s;
+    if(selected && !state.layers.some(function(l){ return l.id===selected; })) selected = null;
+    render();
+  });
+  render(); syncUndo();
+})();
+</script>
