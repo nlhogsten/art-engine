@@ -1,0 +1,18 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# local working dirs (keep the repo to code + docs + template)
+downloads/
+projects/
+
+# render outputs stay local — regenerate with bin/ae.py
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.webp
