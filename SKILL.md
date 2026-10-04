@@ -20,8 +20,18 @@ Build social-media visuals with Nate through fast iteration: AI-generate or pull
 6. **Publish (only on approval).** `instagram-cli post-story --draft` first to render the native preview, show it, then publish after he approves. Feed posts via `post-feed`. Follow the instagram skill's approval rules.
 
 ## Tooling
-All in `bin/ae.py` (stateless; the agent manages versioning):
-- `cutout` — chroma-key, luma-key, or shape masks (rounded-rect, ellipse) with feather → PNG with alpha. For hard cutouts, AI-edit the subject onto a solid green background first, then chroma-key.
+All in `bin/` (stateless; the agent manages versioning):
+- `ingest.py` — formal video intake. `ingest <video> --out <dir>` probes the
+  file and writes: `meta.json` (duration/res/fps), `keyframes/` (scene-change
+  frames, timestamps in filenames), `contact.jpg` (1fps contact sheet for
+  at-a-glance review), `review.json` (template the agent fills with
+  timestamped beats + takeaway). `grab <video> --at <s> --out frame.png`
+  pulls an exact frame; `clip <video> --from <s> --to <s> --out clip.mp4`
+  cuts a clip. **Process:** every video Nate submits gets ingested, the agent
+  reviews the contact sheet and writes the beats, and later frame/clip grabs
+  are timestamp lookups — never scrub blind.
+- `ae.py` (stateless; the agent manages versioning):
+- `cutout` — chroma-key, luma-key, or shape masks (rounded-rect, ellipse) with feather → PNG with alpha. **AI subject cutout**: `~/workspace/.venvs/cutout/bin/python -m rembg` (u2net, local, ~176MB model in `~/.rembg/`) — real photos, no green screen needed; crop the alpha to the garment/subject bbox after. Replaces the old "AI onto green then chroma-key" workaround.
 - `composite` — JSON layer spec: bg color/image, layers with anchor/pos, scale, rotate, opacity, blend, feather, drop shadow.
 - `grade` — saturation, contrast, brightness, warmth, vignette, grain, fade, duotone, sharpness. Presets in `presets.yaml`.
 - `text` — overlay with font/size/anchor/color/stroke/shadow, word wrap.
@@ -32,6 +42,9 @@ All in `bin/ae.py` (stateless; the agent manages versioning):
 - `muxaudio` — attach an audio track to a video (e.g. his song file).
 
 Run `bin/ae.py <op> --help` for flags. Compile-check after edits: `python3 -m py_compile bin/ae.py`.
+
+## Video dictionary
+`video-dictionary/DICTIONARY.md` — the shared directing language for video work: 7 core moves (push-in, cutout isolation, treatment dissolve, scroll-at-speed, hard-cut card, annotation, the hold) each with a visual ref and an ffmpeg recipe, plus standard editing terms. Directing convention: name the move, the subject, the duration — e.g. "push into the shirt post, 3 seconds — treatment dissolve to outline, hold 2." The builder executes; the director never touches ffmpeg. `bin/hand_draw.py` draws the wobbly hand annotation marks (circle/arrow/underline).
 
 ## Presets
 `presets.yaml` holds Nate's style presets (from his IG: raw flash-lit phone photos, heavy saturation, candid found-weirdness) and social formats. Start from a preset, then deviate per feedback. Add new presets when a look recurs — that's how the engine learns his taste.
