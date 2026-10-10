@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "name": "Art Engine",
+  "kind": "engine",
+  "status": "live",
+  "description": "Image and video generation, compositing, grading, text, assembly, and direct-manipulation Artboards.",
+  "workSurfaces": [
+    {
+      "id": "creative-materials",
+      "label": "Creative materials",
+      "kind": "materials",
+      "description": "Assets, canvases, clips, and rendered outputs in this host.",
+      "materialKinds": ["image", "video", "canvas"]
+    }
+  ],
+  "tools": [
+    {
+      "id": "artboard",
+      "label": "Artboard",
+      "kind": "artboard",
+      "description": "Arrange layers directly and render a new full-resolution version.",
+      "target": null
+    },
+    {
+      "id": "versions",
+      "label": "Version browser",
+      "kind": "versions",
+      "description": "Compare and clone explicitly linked, non-overwriting renders.",
+      "target": "versions"
+    }
+  ],
+  "attachments": [
+    {
+      "projectPattern": "art-*",
+      "surfaces": ["creative-materials"],
+      "tools": ["artboard", "versions"],
+      "bindings": { "workspace": "$wildcard" }
+    },
+    {
+      "projectPattern": "instagram-video-series-production",
+      "surfaces": ["creative-materials"],
+      "tools": ["artboard", "versions"],
+      "bindings": { "workspace": "covers" }
+    }
+  ]
+}

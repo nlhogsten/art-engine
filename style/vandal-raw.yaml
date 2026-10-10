@@ -1,0 +1,49 @@
+# vandal-raw.yaml — Nate's style profile
+# Flash-lit, hyper-saturated, sticker-bomb: hot pink / lime / butter-yellow
+# on cream and ink, digicore texture. The reference profile other engine
+# users fork. Inherits every universal rule from default, then adds the
+# taste that makes a render his.
+
+name: vandal-raw
+description: >
+  Nate's profile. Nothing ships flat, nothing ships timid: content is always
+  graded, glitch is punctuation (never a blanket), and annotation layers —
+  logos, labels, hand marks — sit clean above everything.
+inherits: default
+
+rules:
+  - id: annotation-stays-clean
+    severity: error
+    rationale: >
+      Logos, labels and hand marks live on annotation layers, composited
+      clean above everything. A glitch or grade touching a logo bug reads as
+      a rendering bug, not style — the annotation is the signature, the
+      content is the canvas. Effects apply to content layers only, never to
+      annotation layers.
+    incident:
+      detail: "Standing convention from EP1 direction (Oct 4 2026): the Claude/Gemini logo bugs stay clean above the glitch stack while the scroll beneath degrades."
+    check:
+      type: annotation_effects
+
+  - id: content-carries-grade
+    severity: warn
+    rationale: >
+      His feed is never flat rec709. An ungraded content layer is unfinished
+      work, not a neutral choice — every video/image layer should carry an
+      explicit grade or effect so the look is a decision, not an accident.
+    incident:
+      detail: "Convention from the art-engine grade presets (Oct 2026): start from vandal-raw or declare the deviation."
+    check:
+      type: content_grade
+
+  - id: glitch-declares-hits
+    severity: warn
+    rationale: >
+      In his grammar glitch is punctuation — it fires on hit ranges, then
+      the layer plays clean. A glitch with no hits blankets the whole layer,
+      which is a different (heavier) statement; declare the hits or confirm
+      the blanket is what you meant.
+    incident:
+      detail: "EP1 Option B degradation arc (Oct 5 2026): dead-end scrolls escalate in glitchiness via hit ranges, then the Muse find snaps clean."
+    check:
+      type: glitch_hits

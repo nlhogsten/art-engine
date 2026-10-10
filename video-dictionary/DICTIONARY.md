@@ -31,14 +31,18 @@ local. The public repo carries this text plus the recipes.
 ### 2. Cutout isolation
 
 - **Aka:** isolation fade.
-- **What:** Everything in the frame dissolves away except the subject, which
-  remains as a clean extracted cutout — as if it were traced and lifted in
-  Photoshop while the world falls out from under it.
+- **What:** The frame sits static; then everything in it dissolves away while
+  the subject stays pixel-locked in place — never cutting, never jumping —
+  as if it were traced and lifted in Photoshop while the world falls out
+  from behind it. The subject may grow gently through the dissolve so the
+  end state reads at full size, but its center never moves.
 - **Says:** "This is the thing. Everything else was context."
 - **Use when:** A single object is the payoff of a search or a story beat.
-- **Recipe:** AI subject cutout (`rembg`/u2net, crop to subject, feather
-  alpha) → hold cutout on black → dip-to-black in from the previous scene →
-  fade the cutout up → subtle breathing zoom (`z='1+0.06*on/N'`).
+- **Recipe:** AI subject cutout (`rembg`/u2net) taken from the *same frame*
+  it will sit in, so alignment is pixel-perfect → black layer
+  `fade=t=in:alpha=1` over the base → cutout overlaid on top throughout,
+  center-locked (`overlay=x='cx-w/2':y='cy-h/2'`), optional slow growth
+  across the dissolve. See `bin/vtimeline.py` op `cutout_isolation`.
 - **Ref:** `refs/cutout-isolation.mp4`
 
 ### 3. Treatment dissolve
@@ -142,3 +146,31 @@ Name the move, name the subject, name the duration:
 > 2 — hard-cut card: 'she didn't know.'"
 
 The builder executes; the director never touches ffmpeg.
+
+---
+
+## The composition model (how moves become layers)
+
+Every move above now compiles to the same underlying model: a
+**composition** is layers, and the renderer (`bin/vcompose.py`) is just a
+compiler from layers to pixels. Full schema: `composition/SPEC.md`.
+
+What this means for directing:
+
+- **Moves are layer stacks, not baked clips.** "Scroll-at-speed with a
+  glitch" = a `video` layer (the recording, with `cuts` for the ranges
+  and `speed`) + a `glitch` effect with `hits` + an annotation layer for
+  the logo bug. Change the glitch color = one param, not a re-shoot.
+- **Sub-clip control is the cut list.** Cookie-banner frames, dead air,
+  loading screens — excise them in `cuts[]`; hold the money frame in
+  `holds[]`. The director marks ranges; the compiler does the surgery.
+- **Annotation stays clean.** Logo bugs, labels, hand marks are
+  `annotate: true` layers composited last, above all effects. A glitch
+  hit never touches the bug — by construction, not by care.
+- **The hold is a first-class citizen.** `holds[]` freezes a source frame
+  for N seconds. "Sit with this" is data now, not a render trick.
+
+Directing in this model sounds like: "scroll-c: cuts 16→20.5 and
+23→25.5 at 2x, hold 28.5 for 2, glitch hits at 1.2/3.0/5.8, bug top-left
+annotated." The board (Phase 2) will let the director set all of this by
+hand.

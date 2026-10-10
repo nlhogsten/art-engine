@@ -1,0 +1,62 @@
+# default.yaml — universal style profile
+# Every profile inherits these rules. Taste-neutral quality gates:
+# things that read as broken video no matter whose style it is.
+
+name: default
+description: >
+  Universal rules every profile inherits. These are not taste — a blank
+  viewport or a frozen frame reads as a broken render in any style.
+inherits: null
+
+rules:
+  - id: no-dead-viewport
+    severity: error
+    rationale: >
+      A viewer reads an unrendered viewport as a broken video, not a pause.
+      Blank frames — black from missing content, white from a mid-load page —
+      never survive to the final render. Cut them, speed-ramp through them,
+      or cover them with annotation. If the emptiness IS the beat, mark the
+      layer intentional: true and the linter stands down.
+    incident:
+      file: ~/workspace/content-pipeline/builds/ep1/B4-dead-air-incident.md
+      detail: "treatment-B4-no-banners.mp4 (26.67s): ~2s mostly-black unrendered viewport at 9-10s, white mid-load frame at ~13s in the Gemini scroll segment. Found by 1fps mean-brightness scan, Oct 5 2026."
+    check:
+      type: dead_viewport
+      sample_fps: 1
+      dark_below: 18
+      bright_above: 235
+      min_seconds: 0.5
+
+  - id: no-accidental-freeze
+    severity: warn
+    rationale: >
+      A frozen frame reads as a buffering glitch unless the viewer knows it
+      is deliberate. Declared holds[] are intent made data and are always
+      exempt; anything else static for more than a second gets flagged.
+      The named "hold" move stays legal — it is the accidental freeze
+      that is banned.
+    incident:
+      file: ~/workspace/content-pipeline/builds/ep1/B4-dead-air-incident.md
+      detail: "Loading states in screen recordings present as frozen frames before the page paints; the 1fps scan's dark runs at 9-10s were effectively static blanks."
+    check:
+      type: accidental_freeze
+      sample_fps: 1
+      diff_below: 2.0
+      min_seconds: 1.0
+      exempt_holds: true
+
+  - id: loading-must-be-covered
+    severity: warn
+    rationale: >
+      Page loads are process, not content. A sustained near-white frame is
+      almost always a browser mid-paint. Below the hard error bar it still
+      gets flagged so the editor can cut it, ramp through it, or annotate
+      over it — never ship it raw.
+    incident:
+      file: ~/workspace/content-pipeline/builds/ep1/B4-dead-air-incident.md
+      detail: "The ~13s white frame was hawaiicamoco.com mid-load; the Etsy half-load at ~14-16s was deliberate (the 'nothing.' beat) and is the canonical intentional:true case."
+    check:
+      type: near_white
+      sample_fps: 1
+      bright_above: 215
+      min_seconds: 0.25

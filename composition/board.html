@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Video Board</title>
+<style>
+:root{
+  --bg:#141416; --surface:#1e1e22; --surface2:#26262c; --border:#36363e;
+  --text:#f0ede6; --muted:#9a97a3; --accent:#ff2d78; --accent2:#b6f34c;
+  --warn:#ffc857;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;
+  overscroll-behavior:none;}
+#app{max-width:640px;margin:0 auto;padding:8px 10px 40px;}
+header{display:flex;align-items:center;gap:6px;padding:6px 0;}
+header .title{font-weight:800;font-size:15px;flex:1;letter-spacing:.3px;}
+header .title small{color:var(--muted);font-weight:400;font-size:11px;display:block;}
+button{font-family:inherit;font-size:13px;padding:8px 12px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface2);color:var(--text);
+  min-height:36px;touch-action:manipulation;}
+button:active{background:#33333b;}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;}
+button:disabled{opacity:.35;}
+#btn-play{min-width:52px;font-size:16px;}
+#time-disp{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);min-width:96px;text-align:center;}
+#status{font-size:11px;color:var(--muted);min-height:16px;margin:2px 0 6px;}
+#status.err{color:#ff7a7a;}
+#stage-wrap{display:flex;justify-content:center;margin-bottom:8px;}
+#stage{position:relative;width:100%;max-width:340px;border-radius:10px;overflow:hidden;
+  background:#000;border:1px solid var(--border);touch-action:none;user-select:none;-webkit-user-select:none;}
+#pv{width:100%;display:block;background:#000;}
+#selbox{position:absolute;border:2px solid var(--accent);border-radius:4px;display:none;
+  touch-action:none;cursor:grab;z-index:5;}
+#selbox .tag{position:absolute;top:-20px;left:-2px;font-size:10px;background:var(--accent);
+  color:#fff;padding:1px 6px;border-radius:4px;white-space:nowrap;}
+#ghost{position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none;}
+#timeline{margin-bottom:8px;}
+#tl-ruler{position:relative;height:16px;font-size:9px;color:var(--muted);}
+#tl-ruler span{position:absolute;transform:translateX(-50%);}
+#tl-ruler i{position:absolute;top:10px;width:1px;height:5px;background:var(--border);}
+#tl-track{position:relative;height:40px;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;touch-action:none;overflow:hidden;}
+#playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:3;pointer-events:none;}
+#playhead::after{content:"";position:absolute;top:-1px;left:-5px;border:6px solid transparent;border-top:8px solid var(--accent);}
+#lanes{margin-top:6px;display:flex;flex-direction:column;gap:3px;}
+.lane{display:flex;align-items:center;gap:6px;height:30px;}
+.lane .lname{flex:0 0 92px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lane .lbar-wrap{position:relative;flex:1;height:22px;background:var(--surface);border-radius:5px;overflow:hidden;}
+.lane .lbar{position:absolute;top:0;bottom:0;background:#3a3f4d;border-radius:4px;border:1px solid #4a5060;}
+.lane.sel .lbar{background:#4d3a4a;border-color:var(--accent);}
+.lane.sel .lname{color:var(--text);font-weight:700;}
+.lane.hidden .lbar{opacity:.3;}
+#tabs{display:flex;gap:6px;margin:10px 0 8px;}
+#tabs button{flex:1;}
+#tabs button.on{background:var(--surface2);border-color:var(--accent);font-weight:700;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;}
+.prow{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid #26262c;}
+.prow:last-child{border-bottom:none;}
+.prow .nm{flex:0 0 118px;font-size:12px;color:var(--muted);}
+.prow input[type=number]{width:76px;font-size:13px;padding:6px;border-radius:6px;
+  border:1px solid var(--border);background:var(--bg);color:var(--text);}
+.prow input[type=range]{flex:1;min-width:0;}
+.prow input[type=color]{width:44px;height:30px;padding:2px;border:1px solid var(--border);border-radius:6px;background:var(--bg);}
+.prow select{font-size:13px;padding:6px;border-radius:6px;border:1px solid var(--border);
+  background:var(--bg);color:var(--text);}
+.prow .val{flex:0 0 52px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text);}
+fieldset{border:1px solid var(--border);border-radius:8px;margin:8px 0;padding:4px 8px 8px;}
+legend{font-size:12px;font-weight:700;padding:0 6px;}
+legend button{font-size:11px;padding:2px 8px;min-height:0;margin-left:8px;}
+.hint{font-size:11px;color:var(--muted);padding:6px 2px;line-height:1.5;}
+.sect{font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--muted);margin:10px 0 2px;text-transform:uppercase;}
+.lrow{display:flex;align-items:center;gap:6px;padding:8px 4px;border-bottom:1px solid #26262c;}
+.lrow:last-child{border-bottom:none;}
+.lrow .id{flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lrow .type{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 5px;}
+.lrow.sel{background:#2a2230;border-radius:6px;}
+.lrow .icobtn{font-size:14px;padding:6px 8px;min-height:34px;}
+.cutrow{display:flex;align-items:center;gap:5px;padding:6px 0;border-bottom:1px solid #26262c;flex-wrap:wrap;}
+.cutrow input[type=number]{width:64px;font-size:12px;padding:5px;border-radius:6px;
+  border:1px solid var(--border);background:var(--bg);color:var(--text);}
+.cutrow .clab{font-size:11px;color:var(--muted);}
+#render-out{margin-top:10px;background:var(--surface);border:1px solid var(--accent);
+  border-radius:10px;padding:10px;font-size:12px;line-height:1.7;}
+#render-out a{color:var(--accent2);font-weight:700;}
+#pad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:3px;touch-action:none;}
+#pad button{font-size:16px;min-height:44px;}
+.kv{font-size:11px;color:var(--muted);}
+.kv b{color:var(--text);}
+/* Phase 3: keyframes + audio */
+.kfbtn{font-size:12px;padding:4px 8px;min-height:30px;border-radius:6px;line-height:1;flex:0 0 auto;}
+.kfbtn.on{background:var(--accent2);border-color:var(--accent2);color:#141416;font-weight:700;}
+.kfbtn:disabled{opacity:.3;}
+.kflist{margin:2px 0 8px 0;padding:6px 8px;background:var(--bg);border:1px dashed var(--border);border-radius:8px;}
+.kfrow{display:flex;align-items:center;gap:5px;padding:4px 0;}
+.kfrow input[type=number]{width:58px;font-size:12px;padding:5px;border-radius:6px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);}
+.kfrow select{font-size:12px;padding:5px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);}
+.kfrow .clab{font-size:11px;color:var(--accent2);}
+.kfdia{position:absolute;top:50%;width:13px;height:13px;background:var(--accent2);
+  transform:translate(-50%,-50%) rotate(45deg);border:1px solid #141416;border-radius:2px;
+  z-index:2;touch-action:none;cursor:ew-resize;}
+.warnbox{background:#3a2a20;border:1px solid var(--warn);color:var(--warn);
+  border-radius:8px;padding:8px;font-size:12px;margin:8px 0;line-height:1.5;}
+#audio-lanes{margin-top:6px;display:flex;flex-direction:column;gap:3px;}
+#audio-lanes .lbar{background:#2c4a3f;border-color:#3f6b5c;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title">Video Board<small id="comp-name">—</small></div>
+    <button id="btn-undo" title="Undo">↶</button>
+    <button id="btn-redo" title="Redo">↷</button>
+    <button id="btn-play" title="Play/Pause">▶</button>
+    <span id="time-disp">0.00 / 0.00</span>
+    <button id="btn-render" class="primary">Render</button>
+  </header>
+  <div id="status"></div>
+
+  <div id="stage-wrap">
+    <div id="stage">
+      <video id="pv" playsinline preload="auto" loop></video>
+      <div id="selbox"><span class="tag"></span><img id="ghost" alt=""></div>
+    </div>
+  </div>
+
+  <div id="timeline">
+    <div id="tl-ruler"></div>
+    <div id="tl-track"><div id="playhead"></div></div>
+    <div id="lanes"></div>
+    <div id="audio-lanes"></div>
+  </div>
+
+  <div id="tabs">
+    <button data-tab="layers" class="on">Layers</button>
+    <button data-tab="inspector">Inspector</button>
+    <button data-tab="cuts">Cuts</button>
+    <button data-tab="audio">Audio</button>
+  </div>
+  <div id="panels">
+    <div id="panel-layers" class="panel"></div>
+    <div id="panel-inspector" class="panel" hidden></div>
+    <div id="panel-cuts" class="panel" hidden></div>
+    <div id="panel-audio" class="panel" hidden></div>
+  </div>
+  <div id="render-out" hidden></div>
+</div>
+<script>
+"use strict";
+/* ---- state ---- */
+let COMP = null, COMP_PATH = "", PROBES = {};
+let SEL = null, T = 0;
+let PROXY = {url:"", scale:1, duration:0};
+let hist = [], future = [];
+let proxyTimer = null, proxyBusy = false, proxyQueued = false;
+let playing = false;
+
+const $ = id => document.getElementById(id);
+const stage = $("stage"), video = $("pv"), selbox = $("selbox"), ghost = $("ghost");
+const statusEl = $("status");
+
+function status(msg, err){
+  statusEl.textContent = msg || "";
+  statusEl.className = err ? "err" : "";
+}
+async function api(path, method, body){
+  const r = await fetch(path, {
+    method: method || "GET",
+    headers: {"Content-Type":"application/json"},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const j = await r.json();
+  if(!j.ok) throw new Error(j.error || ("request failed: " + path));
+  return j;
+}
+const deep = o => JSON.parse(JSON.stringify(o));
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+/* ---- history (undo/redo, save-on-release) ---- */
+function snap(){ return deep(COMP); }
+function pushHistory(){
+  hist.push(snap()); if(hist.length > 60) hist.shift();
+  future.length = 0; syncUndo();
+}
+function applySnap(s){
+  COMP = s;
+  if(SEL && !COMP.layers.some(l => l.id === SEL)) SEL = null;
+  save(); renderAll(); queueProxy();
+}
+function syncUndo(){
+  $("btn-undo").disabled = !hist.length;
+  $("btn-redo").disabled = !future.length;
+  $("btn-undo").style.opacity = hist.length ? 1 : .35;
+  $("btn-redo").style.opacity = future.length ? 1 : .35;
+}
+$("btn-undo").addEventListener("click", () => {
+  if(!hist.length) return;
+  future.push(snap()); applySnap(hist.pop());
+});
+$("btn-redo").addEventListener("click", () => {
+  if(!future.length) return;
+  hist.push(snap()); applySnap(future.pop());
+});
+async function save(){
+  try { await api("/api/comp", "POST", {comp: COMP}); }
+  catch(e){ status("save failed: " + e.message, true); }
+}
+
+/* ---- proxy preview ---- */
+function queueProxy(){
+  clearTimeout(proxyTimer);
+  proxyTimer = setTimeout(doProxy, 450);
+}
+async function doProxy(){
+  if(proxyBusy){ proxyQueued = true; return; }
+  proxyBusy = true;
+  status("rendering proxy…");
+  try{
+    const j = await api("/api/proxy", "POST", {comp: COMP});
+    PROXY = {url: j.url, scale: j.proxy_scale, duration: j.duration};
+    if(video.dataset.url !== j.url){
+      video.dataset.url = j.url;
+      const t = T;
+      video.src = j.url;
+      video.onloadedmetadata = () => { video.currentTime = Math.min(t, j.duration - 0.01); };
+    }
+    status("");
+  }catch(e){ status("proxy failed: " + e.message, true); }
+  proxyBusy = false;
+  if(proxyQueued){ proxyQueued = false; doProxy(); }
+}
+
+/* ---- timeline ---- */
+function layerAt(id){ return COMP.layers.find(l => l.id === id); }
+function setTime(t, fromVideo){
+  T = clamp(t, 0, COMP.duration);
+  const pct = (T / COMP.duration) * 100;
+  $("playhead").style.left = pct + "%";
+  $("time-disp").textContent = T.toFixed(2) + " / " + COMP.duration.toFixed(2);
+  if(!fromVideo && !playing && video.readyState >= 1){
+    try{ video.currentTime = T; }catch(e){}
+  }
+  const cutT = $("cut-playhead");
+  if(cutT) cutT.textContent = T.toFixed(2) + "s";
+}
+function renderTimeline(){
+  const dur = COMP.duration;
+  const ruler = $("tl-ruler"); ruler.innerHTML = "";
+  const step = dur <= 10 ? 1 : dur <= 30 ? 2 : 5;
+  for(let t = 0; t <= dur + 1e-6; t += step){
+    const s = document.createElement("span");
+    s.style.left = (t / dur * 100) + "%"; s.textContent = t + "s";
+    const tick = document.createElement("i");
+    tick.style.left = (t / dur * 100) + "%";
+    ruler.appendChild(s); ruler.appendChild(tick);
+  }
+  const lanes = $("lanes"); lanes.innerHTML = "";
+  [...COMP.layers].reverse().forEach(L => {
+    const row = document.createElement("div");
+    row.className = "lane" + (L.id === SEL ? " sel" : "") + (L._hidden ? " hidden" : "");
+    const nm = document.createElement("div");
+    nm.className = "lname"; nm.textContent = L.id;
+    const wrap = document.createElement("div");
+    wrap.className = "lbar-wrap";
+    const bar = document.createElement("div");
+    bar.className = "lbar";
+    bar.style.left = (L.in / dur * 100) + "%";
+    bar.style.width = (Math.max(0.5, L.out - L.in) / dur * 100) + "%";
+    wrap.appendChild(bar);
+    row.appendChild(nm); row.appendChild(wrap);
+    if(L.id === SEL){
+      // keyframe diamonds (Phase 3): drag to retime
+      layerKeyframes(L).forEach(k => {
+        const d = document.createElement("div");
+        d.className = "kfdia";
+        d.style.left = (clamp(k.t, 0, dur) / dur * 100) + "%";
+        d.title = (k.kind === "t" ? "transform." : "fx" + k.ei + ".") + k.key +
+          " @ " + k.t + "s — drag to retime";
+        d.addEventListener("pointerdown", ev => startKfDrag(ev, L, k, wrap, d));
+        wrap.appendChild(d);
+      });
+    }
+    row.addEventListener("click", () => select(L.id));
+    lanes.appendChild(row);
+  });
+  renderAudioLanes();
+  setTime(T, true);
+}
+/* scrub */
+(function(){
+  const track = $("tl-track");
+  let scrubbing = false;
+  const tFromEvent = e => {
+    const r = track.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX);
+    return clamp((x - r.left) / r.width, 0, 1) * COMP.duration;
+  };
+  const down = e => {
+    if(!COMP) return;
+    e.preventDefault();
+    scrubbing = true;
+    if(playing) togglePlay();
+    setTime(tFromEvent(e));
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up, {once:true});
+    window.addEventListener("pointercancel", up, {once:true});
+  };
+  const move = e => { if(scrubbing){ e.preventDefault(); setTime(tFromEvent(e)); } };
+  const up = () => {
+    scrubbing = false;
+    window.removeEventListener("pointermove", move);
+  };
+  track.addEventListener("pointerdown", down);
+})();
+
+/* ---- play ---- */
+function togglePlay(){
+  if(!video.src) return;
+  if(playing){ video.pause(); }
+  else{ video.currentTime = T; video.play().catch(()=>{}); }
+}
+$("btn-play").addEventListener("click", togglePlay);
+video.addEventListener("play", () => { playing = true; $("btn-play").textContent = "⏸"; });
+video.addEventListener("pause", () => {
+  playing = false; $("btn-play").textContent = "▶";
+  setTime(video.currentTime, true);
+});
+video.addEventListener("timeupdate", () => { if(playing) setTime(video.currentTime, true); });
+document.addEventListener("keydown", e => {
+  if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if(e.code === "Space"){ e.preventDefault(); togglePlay(); }
+  if(e.code === "ArrowLeft"){ setTime(T - 1/30); }
+  if(e.code === "ArrowRight"){ setTime(T + 1/30); }
+});
+
+/* ---- selection + drag (Artboard grammar) ---- */
+function layerFrameSize(L){
+  // display frame of the layer in canvas px (before scale)
+  if(L.type === "image" && L._nat){
+    return {w: L._nat.w, h: L._nat.h};
+  }
+  const fr = L.frame || {w: COMP.width, h: COMP.height};
+  return {w: fr.w, h: fr.h};
+}
+function select(id){
+  SEL = id;
+  renderLayers(); renderInspector(); renderCuts(); renderTimeline();
+  updateSelbox();
+}
+function stageScale(){
+  const r = stage.getBoundingClientRect();
+  return {sw: r.width, sh: r.height, kx: r.width / COMP.width, ky: r.height / COMP.height};
+}
+function updateSelbox(){
+  const L = SEL && layerAt(SEL);
+  if(!L || L._locked){ selbox.style.display = "none"; return; }
+  const {sw, sh, kx, ky} = stageScale();
+  const fr = layerFrameSize(L);
+  const sc = (L.transform && L.transform.scale) || 1;
+  const t = L.transform || {};
+  selbox.style.display = "block";
+  selbox.style.left = ((t.x || 0) * kx) + "px";
+  selbox.style.top = ((t.y || 0) * ky) + "px";
+  selbox.style.width = (fr.w * sc * kx) + "px";
+  selbox.style.height = (fr.h * sc * ky) + "px";
+  selbox.querySelector(".tag").textContent = L.id;
+}
+function ghostSrc(L){
+  if(L.type === "image"){
+    const src = L.src.startsWith("/") ? L.src : COMP_PATH.replace(/\/[^/]*$/, "/") + L.src;
+    return "/api/file?path=" + encodeURIComponent(src);
+  }
+  if(L.type === "video"){
+    const src = L.src.startsWith("/") ? L.src : COMP_PATH.replace(/\/[^/]*$/, "/") + L.src;
+    return "/api/poster?src=" + encodeURIComponent(src);
+  }
+  return null;
+}
+(function(){
+  let dragging = false, sx0 = 0, sy0 = 0, ox = 0, oy = 0;
+  selbox.addEventListener("pointerdown", e => {
+    const L = SEL && layerAt(SEL);
+    if(!L || L._locked) return;
+    const tt = L.transform || {};
+    if(isKF(tt.x) || isKF(tt.y)){
+      status("x/y are keyframed — edit them via the keyframe rows");
+      return;
+    }
+    e.preventDefault(); e.stopPropagation();
+    pushHistory();
+    dragging = true;
+    sx0 = e.clientX; sy0 = e.clientY;
+    const t = L.transform || (L.transform = {});
+    ox = t.x || 0; oy = t.y || 0;
+    // live ghost feedback, dim the baked proxy underneath
+    const gs = ghostSrc(L);
+    if(gs){ ghost.src = gs; ghost.style.display = "block"; }
+    video.style.opacity = "0.35";
+    selbox.setPointerCapture(e.pointerId);
+    const move = ev => {
+      if(!dragging) return;
+      const {kx, ky} = stageScale();
+      t.x = Math.round((ox + (ev.clientX - sx0) / kx) * 10) / 10;
+      t.y = Math.round((oy + (ev.clientY - sy0) / ky) * 10) / 10;
+      updateSelbox();
+      syncInspectorTransform();
+    };
+    const up = () => {
+      dragging = false;
+      ghost.style.display = "none";
+      video.style.opacity = "1";
+      save(); queueProxy();
+      selbox.removeEventListener("pointermove", move);
+      selbox.removeEventListener("pointerup", up);
+      selbox.removeEventListener("pointercancel", up);
+    };
+    selbox.addEventListener("pointermove", move);
+    selbox.addEventListener("pointerup", up);
+    selbox.addEventListener("pointercancel", up);
+  });
+  // keep box aligned on resize
+  window.addEventListener("resize", updateSelbox);
+})();
+
+/* ---- tabs ---- */
+document.querySelectorAll("#tabs button").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#tabs button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    document.querySelectorAll("#panels > div").forEach(p => {
+      p.hidden = (p.id !== "panel-" + b.dataset.tab);
+    });
+  });
+});
+
+/* ---- layers panel ---- */
+function renderLayers(){
+  const p = $("panel-layers"); p.innerHTML = "";
+  if(!COMP.layers.length){
+    p.innerHTML = '<div class="hint">No layers.</div>'; return;
+  }
+  [...COMP.layers].reverse().forEach(L => {
+    const row = document.createElement("div");
+    row.className = "lrow" + (L.id === SEL ? " sel" : "");
+    const eye = document.createElement("button");
+    eye.className = "icobtn"; eye.textContent = L._hidden ? "🚫" : "👁";
+    eye.title = "show/hide";
+    eye.addEventListener("click", ev => {
+      ev.stopPropagation(); pushHistory();
+      L._hidden = !L._hidden; save(); renderAll(); queueProxy();
+    });
+    const lock = document.createElement("button");
+    lock.className = "icobtn"; lock.textContent = L._locked ? "🔒" : "🔓";
+    lock.title = "lock/unlock";
+    lock.addEventListener("click", ev => {
+      ev.stopPropagation(); pushHistory();
+      L._locked = !L._locked; save(); renderLayers(); updateSelbox();
+    });
+    const id = document.createElement("div");
+    id.className = "id"; id.textContent = L.id;
+    const ty = document.createElement("span");
+    ty.className = "type"; ty.textContent = L.type + (L.annotate ? " ✦" : "");
+    row.appendChild(eye); row.appendChild(lock); row.appendChild(id); row.appendChild(ty);
+    row.addEventListener("click", () => select(L.id));
+    p.appendChild(row);
+  });
+}
+
+/* ---- keyframes (Phase 3) ---- */
+const KF_ANIMATABLE = {
+  transform: ["x", "y", "scale", "rot", "opacity"],
+  glitch: ["shift", "noise", "sat", "hue", "tint_op"],
+  blur: ["sigma"],
+  rgbshift: ["r", "g", "b"],
+  scanlines: ["spacing", "opacity"],
+  shake: ["amp"]
+};
+const XFADES = ["fade","fadeblack","fadewhite","wipeleft","wiperight","wipeup","wipedown",
+  "slideleft","slideright","slideup","slidedown","circleopen","circleclose","dissolve",
+  "pixelize","radial"].map(v => [v, v]);
+function isKF(v){
+  return Array.isArray(v) && v.length > 0 && v[0] !== null &&
+    typeof v[0] === "object" && typeof v[0].t === "number";
+}
+const round2 = v => Math.round(v * 100) / 100;
+function lerpVal(a, b, u){
+  if(Array.isArray(a) && Array.isArray(b))
+    return a.map((x, i) => x + (b[i] - x) * u);
+  return a + (b - a) * u;
+}
+function kfValAt(kfs, t){
+  // ease-aware sample, SPEC semantics: ease describes interpolation INTO the keyframe
+  const ks = [...kfs].sort((a, b) => a.t - b.t);
+  if(!ks.length) return 0;
+  if(t <= ks[0].t) return ks[0].value;
+  const last = ks[ks.length - 1];
+  if(t >= last.t) return last.value;
+  for(let i = 1; i < ks.length; i++){
+    if(t <= ks[i].t){
+      const a = ks[i-1], b = ks[i];
+      const ez = b.ease || "linear";
+      if(ez === "step") return a.value;
+      let u = (t - a.t) / ((b.t - a.t) || 1e-9);
+      if(ez === "in-out") u = u * u * (3 - 2 * u);
+      return lerpVal(a.value, b.value, u);
+    }
+  }
+  return last.value;
+}
+function layerKeyframes(L){
+  const out = [];
+  const t = L.transform || {};
+  KF_ANIMATABLE.transform.forEach(k => {
+    if(isKF(t[k])) t[k].forEach((kf, i) => out.push({kind: "t", key: k, ki: i, t: kf.t}));
+  });
+  (L.effects || []).forEach((e, ei) => {
+    (KF_ANIMATABLE[e.type] || []).forEach(k => {
+      if(isKF(e[k])) e[k].forEach((kf, i) => out.push({kind: "e", ei, key: k, ki: i, t: kf.t}));
+    });
+  });
+  return out;
+}
+function layerHasKeyframes(L){ return layerKeyframes(L).length > 0; }
+function kfDiamond(obj, key, opts){
+  // Diamond toggle: scalar <-> keyframe list. opts: {pair, def, disabled}
+  opts = opts || {};
+  const b = document.createElement("button");
+  const on = isKF(obj[key]);
+  b.className = "kfbtn" + (on ? " on" : "");
+  b.textContent = "◆";
+  if(opts.disabled){
+    b.disabled = true;
+    b.title = "categorical params can't be keyframed";
+    return b;
+  }
+  b.title = on ? "keyframed — click to bake value at playhead to scalar"
+               : "keyframe this param (adds key at playhead)";
+  b.addEventListener("click", () => {
+    pushHistory();
+    if(isKF(obj[key])){
+      const v = kfValAt(obj[key], T);
+      obj[key] = opts.pair ? [round2(v[0]), round2(v[1])] : round2(v);
+    }else{
+      const cur = obj[key] == null ? (opts.def || 0) : obj[key];
+      const val = opts.pair ? [cur[0], cur[1]] : cur;
+      obj[key] = [{t: round2(T), value: val, ease: "linear"}];
+    }
+    save(); queueProxy(); renderInspector(); renderTimeline();
+  });
+  return b;
+}
+function kfListEditor(parent, obj, key, opts){
+  // Editable (t, value, ease) rows under a keyframed param.
+  opts = opts || {};
+  if(!isKF(obj[key])) return;
+  const kfs = obj[key];
+  const wrap = document.createElement("div");
+  wrap.className = "kflist";
+  const commit = () => { save(); queueProxy(); renderTimeline(); };
+  kfs.forEach(kf => {
+    const r = document.createElement("div");
+    r.className = "kfrow";
+    const dot = document.createElement("span");
+    dot.className = "clab"; dot.textContent = "◆";
+    r.appendChild(dot);
+    const tI = document.createElement("input");
+    tI.type = "number"; tI.step = "0.1"; tI.value = kf.t; tI.title = "time (s, layer-local)";
+    const vIdx = opts.pair ? [0, 1] : [-1];
+    const vInputs = vIdx.map(vi => {
+      const vI = document.createElement("input");
+      vI.type = "number"; vI.step = "any";
+      vI.value = opts.pair ? kf.value[vi] : kf.value;
+      vI.title = opts.pair ? (vi === 0 ? "dx" : "dy") : "value";
+      return vI;
+    });
+    const eS = document.createElement("select");
+    ["linear", "in-out", "step"].forEach(e => {
+      const o = document.createElement("option");
+      o.value = e; o.textContent = e; eS.appendChild(o);
+    });
+    eS.value = kf.ease || "linear";
+    eS.title = "ease into this keyframe";
+    const del = document.createElement("button");
+    del.className = "kfbtn"; del.textContent = "✕"; del.title = "delete keyframe";
+    let armed = false;
+    const arm = () => { if(!armed){ armed = true; pushHistory(); } };
+    [tI, ...vInputs, eS].forEach(el => el.addEventListener("focus", arm));
+    const readBack = () => {
+      kf.t = parseFloat(tI.value) || 0;
+      if(opts.pair){
+        kf.value = [parseFloat(vInputs[0].value) || 0, parseFloat(vInputs[1].value) || 0];
+      }else{
+        kf.value = parseFloat(vInputs[0].value) || 0;
+      }
+      kf.ease = eS.value;
+      kfs.sort((a, b) => a.t - b.t);
+    };
+    [tI, ...vInputs, eS].forEach(el => el.addEventListener("change", () => {
+      armed = false; readBack(); commit(); renderInspector();
+    }));
+    del.addEventListener("click", () => {
+      pushHistory();
+      kfs.splice(kfs.indexOf(kf), 1);
+      if(!kfs.length) delete obj[key];
+      save(); queueProxy(); renderInspector(); renderTimeline();
+    });
+    r.appendChild(tI);
+    vInputs.forEach(vI => r.appendChild(vI));
+    r.appendChild(eS); r.appendChild(del);
+    wrap.appendChild(r);
+  });
+  const add = document.createElement("button");
+  add.className = "kfbtn"; add.textContent = "+ key at playhead";
+  add.addEventListener("click", () => {
+    pushHistory();
+    const t = round2(T);
+    const v = kfValAt(kfs, T);
+    const val = opts.pair ? [round2(v[0]), round2(v[1])] : round2(v);
+    const ex = kfs.find(k => Math.abs(k.t - t) < 0.051);
+    if(ex) ex.value = val;
+    else { kfs.push({t, value: val, ease: "linear"}); kfs.sort((a, b) => a.t - b.t); }
+    save(); queueProxy(); renderInspector(); renderTimeline();
+  });
+  wrap.appendChild(add);
+  parent.appendChild(wrap);
+}
+function defaultEffect(ty){
+  const base = {type: ty};
+  if(ty === "glitch") Object.assign(base, {shift: 34, noise: 40, sat: 1, hue: 0, hits: []});
+  if(ty === "grade") base.preset = "vandal-raw";
+  if(ty === "blur") Object.assign(base, {sigma: 8, hits: []});
+  if(ty === "dissolve") Object.assign(base, {from: [], to: [], at: 1, dur: 1, transition: "fade"});
+  if(ty === "rgbshift") Object.assign(base, {r: [10, 0], g: [-6, 3], b: [-10, 0], hits: []});
+  if(ty === "scanlines") Object.assign(base, {spacing: 4, opacity: 0.25, hits: []});
+  if(ty === "shake") Object.assign(base, {amp: 10, hits: []});
+  return base;
+}
+function startKfDrag(e, L, k, wrap, dia){
+  // drag a timeline diamond to retime its keyframe
+  e.preventDefault(); e.stopPropagation();
+  pushHistory();
+  const kfs = k.kind === "t" ? L.transform[k.key] : L.effects[k.ei][k.key];
+  const kf = kfs[k.ki];
+  const move = ev => {
+    const r = wrap.getBoundingClientRect();
+    const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const t = clamp((x - r.left) / r.width, 0, 1) * COMP.duration;
+    kf.t = round2(t);
+    dia.style.left = (kf.t / COMP.duration * 100) + "%";
+  };
+  const up = () => {
+    kfs.sort((a, b) => a.t - b.t);
+    save(); queueProxy(); renderTimeline();
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
+}
+
+/* ---- inspector ---- */
+function numRow(parent, label, obj, key, opts){
+  opts = opts || {};
+  const row = document.createElement("div"); row.className = "prow";
+  const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = label;
+  const inp = document.createElement("input");
+  inp.type = "number";
+  inp.step = opts.step || "any";
+  if(opts.min != null) inp.min = opts.min;
+  if(opts.max != null) inp.max = opts.max;
+  const kfMode = isKF(obj[key]);
+  inp.value = kfMode ? round2(kfValAt(obj[key], T))
+    : (obj[key] == null ? (opts.def || 0) : obj[key]);
+  if(kfMode) inp.disabled = true;
+  inp.dataset.ikey = key;
+  let armed = false;
+  inp.addEventListener("pointerdown", () => { if(!armed){ armed = true; pushHistory(); } });
+  inp.addEventListener("focus", () => { if(!armed){ armed = true; pushHistory(); } });
+  inp.addEventListener("input", () => {
+    if(isKF(obj[key])) return;
+    obj[key] = parseFloat(inp.value);
+    if(opts.live) opts.live(obj[key]);
+  });
+  inp.addEventListener("change", () => {
+    armed = false;
+    if(opts.min != null && obj[key] < opts.min) obj[key] = opts.min;
+    if(opts.max != null && obj[key] > opts.max) obj[key] = opts.max;
+    inp.value = obj[key];
+    save(); queueProxy(); renderTimeline();
+  });
+  row.appendChild(nm); row.appendChild(inp);
+  if(opts.unit){
+    const u = document.createElement("span"); u.className = "val"; u.textContent = opts.unit;
+    row.appendChild(u);
+  }
+  if(opts.kf) row.appendChild(kfDiamond(obj, key,
+    {pair: opts.kf.pair, def: opts.def, disabled: opts.kf.disabled}));
+  parent.appendChild(row);
+  if(opts.kf && !opts.kf.disabled) kfListEditor(parent, obj, key, {pair: opts.kf.pair});
+  return inp;
+}
+function sliderRow(parent, label, obj, key, min, max, step, opts){
+  opts = opts || {};
+  const row = document.createElement("div"); row.className = "prow";
+  const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = label;
+  const sl = document.createElement("input");
+  sl.type = "range"; sl.min = min; sl.max = max; sl.step = step;
+  const kfMode = isKF(obj[key]);
+  sl.value = kfMode ? kfValAt(obj[key], T) : (obj[key] == null ? 0 : obj[key]);
+  if(kfMode) sl.disabled = true;
+  sl.dataset.ikey = key;
+  const val = document.createElement("div"); val.className = "val";
+  val.textContent = (+sl.value).toFixed(step < 0.1 ? 2 : 1);
+  let armed = false;
+  const arm = () => { if(!armed){ armed = true; pushHistory(); } };
+  sl.addEventListener("pointerdown", arm);
+  sl.addEventListener("focus", arm);
+  sl.addEventListener("input", () => {
+    if(isKF(obj[key])) return;
+    obj[key] = parseFloat(sl.value);
+    val.textContent = (+sl.value).toFixed(step < 0.1 ? 2 : 1);
+  });
+  sl.addEventListener("change", () => { armed = false; save(); queueProxy(); });
+  row.appendChild(nm); row.appendChild(sl); row.appendChild(val);
+  if(opts.kf) row.appendChild(kfDiamond(obj, key,
+    {pair: opts.kf.pair, def: opts.kf.def, disabled: opts.kf.disabled}));
+  parent.appendChild(row);
+  if(opts.kf && !opts.kf.disabled) kfListEditor(parent, obj, key, {pair: opts.kf.pair});
+  return sl;
+}
+function selectRow(parent, label, obj, key, options, opts){
+  opts = opts || {};
+  const row = document.createElement("div"); row.className = "prow";
+  const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = label;
+  const se = document.createElement("select");
+  options.forEach(o => {
+    const op = document.createElement("option");
+    op.value = o[0]; op.textContent = o[1];
+    se.appendChild(op);
+  });
+  se.value = obj[key] == null ? options[0][0] : String(obj[key]);
+  se.dataset.ikey = key;
+  se.addEventListener("change", () => {
+    pushHistory();
+    obj[key] = se.value === "" ? null : se.value;
+    save(); queueProxy();
+  });
+  row.appendChild(nm); row.appendChild(se);
+  if(opts.kfDisabled) row.appendChild(kfDiamond(obj, key, {disabled: true}));
+  parent.appendChild(row);
+  return se;
+}
+function pairRow(parent, label, obj, key, opts){
+  // two-number [dx,dy] pair row (rgbshift channels), keyframeable as pairs
+  opts = opts || {};
+  if(!obj[key]) obj[key] = [0, 0];
+  const row = document.createElement("div"); row.className = "prow";
+  const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = label;
+  const kfMode = isKF(obj[key]);
+  const mk = i => {
+    const inp = document.createElement("input");
+    inp.type = "number"; inp.step = "1"; inp.style.width = "64px";
+    inp.value = kfMode ? round2(kfValAt(obj[key], T)[i]) : obj[key][i];
+    if(kfMode) inp.disabled = true;
+    let armed = false;
+    inp.addEventListener("pointerdown", () => { if(!armed){ armed = true; pushHistory(); } });
+    inp.addEventListener("focus", () => { if(!armed){ armed = true; pushHistory(); } });
+    inp.addEventListener("input", () => {
+      if(isKF(obj[key])) return;
+      obj[key][i] = parseFloat(inp.value) || 0;
+    });
+    inp.addEventListener("change", () => { armed = false; save(); queueProxy(); });
+    return inp;
+  };
+  row.appendChild(nm); row.appendChild(mk(0)); row.appendChild(mk(1));
+  if(opts.kf) row.appendChild(kfDiamond(obj, key, {pair: true, disabled: opts.kf.disabled}));
+  parent.appendChild(row);
+  if(opts.kf && !opts.kf.disabled) kfListEditor(parent, obj, key, {pair: true});
+}
+function checkRow(parent, label, obj, key){
+  const row = document.createElement("div"); row.className = "prow";
+  const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = label;
+  const cb = document.createElement("input");
+  cb.type = "checkbox"; cb.checked = !!obj[key]; cb.style.width = "22px"; cb.style.height = "22px";
+  cb.addEventListener("change", () => {
+    pushHistory(); obj[key] = cb.checked; save(); renderAll(); queueProxy();
+  });
+  row.appendChild(nm); row.appendChild(cb);
+  parent.appendChild(row);
+}
+function hitsEditor(parent, eff){
+  if(!eff.hits) eff.hits = [];
+  const wrap = document.createElement("div");
+  const lab = document.createElement("div");
+  lab.className = "sect"; lab.textContent = "Hit ranges (s)";
+  wrap.appendChild(lab);
+  eff.hits.forEach((h, i) => {
+    const r = document.createElement("div"); r.className = "cutrow";
+    const a = document.createElement("input"); a.type = "number"; a.step = "0.1"; a.value = h[0];
+    const b = document.createElement("input"); b.type = "number"; b.step = "0.1"; b.value = h[1];
+    const del = document.createElement("button"); del.textContent = "✕";
+    const commit = () => {
+      pushHistory();
+      eff.hits[i] = [parseFloat(a.value) || 0, parseFloat(b.value) || 0];
+      save(); queueProxy();
+    };
+    a.addEventListener("change", commit); b.addEventListener("change", commit);
+    del.addEventListener("click", () => { pushHistory(); eff.hits.splice(i, 1); save(); queueProxy(); renderInspector(); });
+    r.appendChild(a); r.appendChild(document.createTextNode("–")); r.appendChild(b); r.appendChild(del);
+    wrap.appendChild(r);
+  });
+  const add = document.createElement("button");
+  add.textContent = "+ hit at playhead (0.3s)";
+  add.addEventListener("click", () => {
+    pushHistory();
+    eff.hits.push([Math.round(T * 10) / 10, Math.round((T + 0.3) * 10) / 10]);
+    save(); queueProxy(); renderInspector();
+  });
+  wrap.appendChild(add);
+  parent.appendChild(wrap);
+}
+function effectPanel(parent, L, eff, idx){
+  const fs = document.createElement("fieldset");
+  const lg = document.createElement("legend");
+  lg.textContent = eff.type;
+  const del = document.createElement("button"); del.textContent = "remove";
+  del.addEventListener("click", () => {
+    pushHistory(); L.effects.splice(idx, 1); save(); queueProxy(); renderInspector();
+  });
+  lg.appendChild(del); fs.appendChild(lg);
+  effectParamRows(fs, L, eff, {});
+  parent.appendChild(fs);
+}
+function effectParamRows(fs, L, eff, opts){
+  // Param rows for one effect. opts.nested (inside a dissolve from/to stack):
+  // scalar-only, no keyframe diamonds, no hits editor.
+  opts = opts || {};
+  const K = opts.nested ? null : {};
+  if(eff.type === "glitch"){
+    sliderRow(fs, "Shift px", eff, "shift", 0, 100, 1, {kf: K});
+    sliderRow(fs, "Grain", eff, "noise", 0, 100, 1, {kf: K});
+    sliderRow(fs, "Saturation", eff, "sat", 0, 2, 0.05, {kf: K});
+    sliderRow(fs, "Hue °", eff, "hue", -180, 180, 1, {kf: K});
+    selectRow(fs, "Channel swap", eff, "swap",
+      [["", "none"], ["bgr", "bgr"], ["brg", "brg"], ["gbr", "gbr"]],
+      {kfDisabled: !opts.nested});
+    const tintRow = document.createElement("div"); tintRow.className = "prow";
+    const tnm = document.createElement("div"); tnm.className = "nm"; tnm.textContent = "Tint";
+    const tc = document.createElement("input"); tc.type = "color";
+    tc.value = eff.tint || "#ff2d78";
+    const tcb = document.createElement("button"); tcb.textContent = eff.tint ? "clear" : "set";
+    tcb.style.minHeight = "30px";
+    tc.addEventListener("change", () => { pushHistory(); eff.tint = tc.value; tcb.textContent = "clear"; save(); queueProxy(); });
+    tcb.addEventListener("click", () => {
+      pushHistory();
+      if(eff.tint){ eff.tint = null; tcb.textContent = "set"; }
+      else { eff.tint = tc.value; tcb.textContent = "clear"; }
+      save(); queueProxy();
+    });
+    tintRow.appendChild(tnm); tintRow.appendChild(tc); tintRow.appendChild(tcb);
+    if(!opts.nested) tintRow.appendChild(kfDiamond(eff, "tint", {disabled: true}));
+    fs.appendChild(tintRow);
+    sliderRow(fs, "Tint opacity", eff, "tint_op", 0, 1, 0.05, {kf: K});
+  }else if(eff.type === "grade"){
+    selectRow(fs, "Preset", eff, "preset",
+      [["vandal-raw","vandal-raw"],["clean-pop","clean-pop"],
+       ["faded-film","faded-film"],["noir","noir"]],
+      {kfDisabled: !opts.nested});
+  }else if(eff.type === "blur"){
+    sliderRow(fs, "Sigma", eff, "sigma", 0, 30, 0.5, {kf: K});
+  }else if(eff.type === "dissolve"){
+    if(!opts.nested && layerHasKeyframes(L)){
+      const w = document.createElement("div");
+      w.className = "warnbox";
+      w.textContent = "⚠ dissolve can't share a layer with keyframed params — " +
+        "vcompose will raise. Remove the keyframes or move this dissolve to its own layer.";
+      fs.appendChild(w);
+    }
+    ["from", "to"].forEach(sk => {
+      if(!eff[sk]) eff[sk] = [];
+      const lab = document.createElement("div");
+      lab.className = "sect"; lab.textContent = sk + " stack";
+      fs.appendChild(lab);
+      eff[sk].forEach((ne, ni) => {
+        const nf = document.createElement("fieldset");
+        const nlg = document.createElement("legend");
+        nlg.textContent = ne.type;
+        const ndel = document.createElement("button"); ndel.textContent = "remove";
+        ndel.addEventListener("click", () => {
+          pushHistory(); eff[sk].splice(ni, 1);
+          save(); queueProxy(); renderInspector();
+        });
+        nlg.appendChild(ndel); nf.appendChild(nlg);
+        effectParamRows(nf, L, ne, {nested: true});
+        fs.appendChild(nf);
+      });
+      const ar = document.createElement("div"); ar.className = "prow";
+      const asel = document.createElement("select");
+      ["glitch","grade","blur","rgbshift","scanlines","shake"].forEach(v => {
+        const o = document.createElement("option"); o.value = v; o.textContent = v;
+        asel.appendChild(o);
+      });
+      const ab = document.createElement("button"); ab.textContent = "Add to " + sk;
+      ab.addEventListener("click", () => {
+        pushHistory(); eff[sk].push(defaultEffect(asel.value));
+        save(); queueProxy(); renderInspector();
+      });
+      ar.appendChild(asel); ar.appendChild(ab);
+      fs.appendChild(ar);
+    });
+    numRow(fs, "At (s)", eff, "at", {min: 0, step: 0.1, kf: {disabled: true}});
+    numRow(fs, "Dur (s)", eff, "dur", {min: 0.1, step: 0.1, kf: {disabled: true}});
+    selectRow(fs, "Transition", eff, "transition", XFADES, {kfDisabled: true});
+    // no hits editor: at/dur is the dissolve's timing
+  }else if(eff.type === "rgbshift"){
+    pairRow(fs, "Red dx/dy", eff, "r", {kf: K && {pair: true}});
+    pairRow(fs, "Green dx/dy", eff, "g", {kf: K && {pair: true}});
+    pairRow(fs, "Blue dx/dy", eff, "b", {kf: K && {pair: true}});
+  }else if(eff.type === "scanlines"){
+    sliderRow(fs, "Spacing px", eff, "spacing", 1, 24, 1, {kf: K});
+    sliderRow(fs, "Opacity", eff, "opacity", 0, 1, 0.05, {kf: K});
+  }else if(eff.type === "shake"){
+    sliderRow(fs, "Amp px", eff, "amp", 0, 60, 1, {kf: K});
+    if(L.type === "image"){
+      const h = document.createElement("div");
+      h.className = "hint";
+      h.textContent = "Note: shake freezes on image layers (size-mismatched overlay) — it works on video layers.";
+      fs.appendChild(h);
+    }
+  }
+  // hits now work for ALL effects (Oct 2026 wrapper fix); dissolve uses at/dur instead
+  if(!opts.nested && eff.type !== "dissolve") hitsEditor(fs, eff);
+}
+function syncInspectorTransform(){
+  const L = SEL && layerAt(SEL);
+  if(!L) return;
+  const t = L.transform || {};
+  document.querySelectorAll('#panel-inspector [data-tk]').forEach(el => {
+    const k = el.dataset.tk;
+    if(el.type === "range" || el.type === "number") el.value = t[k] == null ? 0 : t[k];
+  });
+}
+function renderInspector(){
+  const p = $("panel-inspector"); p.innerHTML = "";
+  const L = SEL && layerAt(SEL);
+  if(!L){ p.innerHTML = '<div class="hint">Select a layer to edit its transform and effects.</div>'; return; }
+  const head = document.createElement("div");
+  head.innerHTML = '<div class="sect">' + esc(L.id) +
+    ' <span class="kv">(' + esc(L.type) + (L.annotate ? ", annotate" : "") + ")</span></div>";
+  p.appendChild(head);
+  numRow(p, "In (s)", L, "in", {min: 0, step: 0.1});
+  numRow(p, "Out (s)", L, "out", {min: 0.1, step: 0.1});
+  checkRow(p, "Hidden", L, "_hidden");
+  checkRow(p, "Locked", L, "_locked");
+
+  const ts = document.createElement("div");
+  ts.className = "sect"; ts.textContent = "Transform";
+  p.appendChild(ts);
+  const t = L.transform || (L.transform = {});
+  const xy = document.createElement("div"); xy.className = "prow";
+  const xn = document.createElement("input"); xn.type = "number"; xn.step = "1";
+  xn.value = isKF(t.x) ? round2(kfValAt(t.x, T)) : (t.x || 0);
+  xn.dataset.tk = "x"; xn.style.width = "70px";
+  if(isKF(t.x)) xn.disabled = true;
+  const yn = document.createElement("input"); yn.type = "number"; yn.step = "1";
+  yn.value = isKF(t.y) ? round2(kfValAt(t.y, T)) : (t.y || 0);
+  yn.dataset.tk = "y"; yn.style.width = "70px";
+  if(isKF(t.y)) yn.disabled = true;
+  const nml = document.createElement("div"); nml.className = "nm"; nml.textContent = "X / Y px";
+  const commitXY = () => {
+    if(!isKF(t.x)) t.x = parseFloat(xn.value) || 0;
+    if(!isKF(t.y)) t.y = parseFloat(yn.value) || 0;
+    save(); queueProxy(); updateSelbox();
+  };
+  let xyArmed = false;
+  [xn, yn].forEach(el => {
+    el.addEventListener("pointerdown", () => { if(!xyArmed){ xyArmed = true; pushHistory(); } });
+    el.addEventListener("focus", () => { if(!xyArmed){ xyArmed = true; pushHistory(); } });
+    el.addEventListener("input", () => {
+      if(isKF(t.x) || isKF(t.y)) return;
+      t.x = parseFloat(xn.value) || 0; t.y = parseFloat(yn.value) || 0;
+      updateSelbox();
+    });
+    el.addEventListener("change", () => { xyArmed = false; commitXY(); });
+  });
+  xy.appendChild(nml); xy.appendChild(xn); xy.appendChild(yn);
+  xy.appendChild(kfDiamond(t, "x", {})); xy.appendChild(kfDiamond(t, "y", {}));
+  p.appendChild(xy);
+  kfListEditor(p, t, "x", {}); kfListEditor(p, t, "y", {});
+
+  [["Scale", "scale", 0.1, 3, 0.01], ["Rotate °", "rot", -180, 180, 1],
+   ["Opacity", "opacity", 0, 1, 0.01]].forEach(([lab, k, mn, mx, st]) => {
+    if(t[k] == null) t[k] = k === "scale" ? 1 : (k === "opacity" ? 1 : 0);
+    const kfMode = isKF(t[k]);
+    const row = document.createElement("div"); row.className = "prow";
+    const nm2 = document.createElement("div"); nm2.className = "nm"; nm2.textContent = lab;
+    const sl = document.createElement("input");
+    sl.type = "range"; sl.min = mn; sl.max = mx; sl.step = st;
+    sl.value = kfMode ? kfValAt(t[k], T) : t[k];
+    if(kfMode) sl.disabled = true;
+    sl.dataset.tk = k;
+    const val = document.createElement("div"); val.className = "val";
+    val.textContent = (+sl.value).toFixed(st < 0.1 ? 2 : 1);
+    let armed = false;
+    sl.addEventListener("pointerdown", () => { if(!armed){ armed = true; pushHistory(); } });
+    sl.addEventListener("input", () => {
+      if(isKF(t[k])) return;
+      t[k] = parseFloat(sl.value);
+      val.textContent = (+t[k]).toFixed(st < 0.1 ? 2 : 1);
+      updateSelbox();
+    });
+    sl.addEventListener("change", () => { armed = false; save(); queueProxy(); });
+    row.appendChild(nm2); row.appendChild(sl); row.appendChild(val);
+    row.appendChild(kfDiamond(t, k, {}));
+    p.appendChild(row);
+    kfListEditor(p, t, k, {});
+  });
+
+  // nudge pad (Artboard grammar: 2px steps, repeat on hold)
+  const padRow = document.createElement("div"); padRow.className = "prow";
+  const pnm = document.createElement("div"); pnm.className = "nm"; pnm.textContent = "Nudge";
+  const pad = document.createElement("div"); pad.id = "pad";
+  pad.innerHTML = "<span></span><button data-dx='0' data-dy='-1'>▲</button><span></span>" +
+    "<button data-dx='-1' data-dy='0'>◀</button><button data-dx='0' data-dy='0'>●</button>" +
+    "<button data-dx='1' data-dy='0'>▶</button><span></span>" +
+    "<button data-dx='0' data-dy='1'>▼</button><span></span>";
+  pad.addEventListener("pointerdown", e => {
+    const b = e.target.closest("button[data-dx]");
+    if(!b) return;
+    const L = SEL && layerAt(SEL);
+    if(!L) return;
+    const tt = L.transform || {};
+    if(isKF(tt.x) || isKF(tt.y)){
+      status("x/y are keyframed — edit them via the keyframe rows");
+      return;
+    }
+    e.preventDefault();
+    pushHistory();
+    const dx = parseFloat(b.dataset.dx) * 2, dy = parseFloat(b.dataset.dy) * 2;
+    const stepFn = () => {
+      t.x = Math.round(((t.x || 0) + dx) * 10) / 10;
+      t.y = Math.round(((t.y || 0) + dy) * 10) / 10;
+      xn.value = t.x; yn.value = t.y; updateSelbox();
+    };
+    stepFn();
+    const iv = setInterval(stepFn, 120);
+    const done = () => {
+      clearInterval(iv); save(); queueProxy(); updateSelbox();
+      window.removeEventListener("pointerup", done);
+      window.removeEventListener("pointercancel", done);
+    };
+    window.addEventListener("pointerup", done);
+    window.addEventListener("pointercancel", done);
+  });
+  padRow.appendChild(pnm); padRow.appendChild(pad);
+  p.appendChild(padRow);
+
+  const es = document.createElement("div");
+  es.className = "sect"; es.textContent = "Effects";
+  p.appendChild(es);
+  (L.effects || []).forEach((eff, i) => effectPanel(p, L, eff, i));
+  const addRow = document.createElement("div"); addRow.className = "prow";
+  const anm = document.createElement("div"); anm.className = "nm"; anm.textContent = "Add effect";
+  const asel = document.createElement("select");
+  ["glitch","grade","blur","dissolve","rgbshift","scanlines","shake"].forEach(v => {
+    const o = document.createElement("option"); o.value = v; o.textContent = v;
+    asel.appendChild(o);
+  });
+  const abtn = document.createElement("button"); abtn.textContent = "Add";
+  abtn.addEventListener("click", () => {
+    pushHistory();
+    L.effects = L.effects || []; L.effects.push(defaultEffect(asel.value));
+    save(); queueProxy(); renderInspector();
+  });
+  addRow.appendChild(anm); addRow.appendChild(asel); addRow.appendChild(abtn);
+  p.appendChild(addRow);
+}
+
+/* ---- sub-clip editing ---- */
+function absSrc(L){
+  if(!L.src) return null;
+  return L.src.startsWith("/") ? L.src
+    : COMP_PATH.replace(/\/[^/]*$/, "/") + L.src;
+}
+function srcDur(L){
+  const p = PROBES[absSrc(L)];
+  return p ? p.dur : 60;
+}
+function contentSegs(L){
+  const cuts = (L.cuts && L.cuts.length) ? L.cuts
+    : [{src_in: 0, src_out: srcDur(L), speed: 1}];
+  const holds = L.holds || [];
+  const segs = [];
+  let t = 0;
+  cuts.forEach((c, i) => {
+    const d = (c.src_out - c.src_in) / (c.speed || 1);
+    segs.push({kind:"cut", i, tl0:t, tl1:t + d,
+               src_in:c.src_in, src_out:c.src_out, speed:c.speed || 1});
+    t += d;
+    holds.forEach((h, hi) => {
+      const at = (h.at_cut == null) ? cuts.length - 1 : h.at_cut;
+      if(at === i){
+        segs.push({kind:"hold", hi, tl0:t, tl1:t + h.dur, at_src:h.at_src});
+        t += h.dur;
+      }
+    });
+  });
+  return {segs, total:t, cuts};
+}
+function normalizeLayer(L){
+  const {total} = contentSegs(L);
+  L.out = Math.round((L.in + total) * 100) / 100;
+  COMP.duration = Math.round(
+    Math.max(...COMP.layers.map(x => x.out)) * 100) / 100;
+}
+function segAt(L, tLocal){
+  const {segs} = contentSegs(L);
+  return segs.find(s => tLocal >= s.tl0 - 1e-6 && tLocal < s.tl1 - 1e-6) || null;
+}
+function renderCuts(){
+  const p = $("panel-cuts"); p.innerHTML = "";
+  const L = SEL && layerAt(SEL);
+  if(!L || L.type !== "video"){
+    p.innerHTML = '<div class="hint">Select a <b>video</b> layer to edit its sub-clips. ' +
+      "Mark cut points to drop segments (like cookie banners), or freeze frames as holds.</div>";
+    return;
+  }
+  const info = document.createElement("div");
+  info.className = "kv";
+  const bn = (L.src || "").split("/").pop();
+  info.innerHTML = "Source: <b>" + esc(bn) + "</b> (" +
+    srcDur(L).toFixed(1) + "s) · playhead <b id='cut-playhead'>" +
+    T.toFixed(2) + "s</b>";
+  p.appendChild(info);
+
+  const cs = document.createElement("div");
+  cs.className = "sect"; cs.textContent = "Cuts (source ranges)";
+  p.appendChild(cs);
+  if(!L.cuts) L.cuts = [];
+  L.cuts.forEach((c, i) => {
+    const r = document.createElement("div"); r.className = "cutrow";
+    r.innerHTML = '<span class="clab">#' + i + "</span>";
+    const mk = (key, step) => {
+      const inp = document.createElement("input");
+      inp.type = "number"; inp.step = step; inp.value = c[key];
+      inp.addEventListener("change", () => {
+        pushHistory();
+        c[key] = parseFloat(inp.value);
+        // clamp to source
+        const sd = srcDur(L);
+        c.src_in = clamp(c.src_in, 0, sd);
+        c.src_out = clamp(c.src_out, 0, sd);
+        if(c.src_out <= c.src_in) c.src_out = c.src_in + 0.1;
+        normalizeLayer(L); save(); renderAll(); queueProxy();
+      });
+      return inp;
+    };
+    r.appendChild(mk("src_in", "0.1"));
+    r.appendChild(document.createTextNode("→"));
+    r.appendChild(mk("src_out", "0.1"));
+    const spd = mk("speed", "0.5"); spd.title = "speed";
+    const slab = document.createElement("span"); slab.className = "clab"; slab.textContent = "×";
+    r.appendChild(slab); r.appendChild(spd);
+    const del = document.createElement("button"); del.textContent = "✕";
+    del.addEventListener("click", () => {
+      if(L.cuts.length <= 1){ status("a clip needs at least one cut", true); return; }
+      pushHistory(); L.cuts.splice(i, 1);
+      normalizeLayer(L); save(); renderAll(); queueProxy();
+    });
+    r.appendChild(del);
+    p.appendChild(r);
+  });
+  const addC = document.createElement("button");
+  addC.textContent = "+ Add cut";
+  addC.addEventListener("click", () => {
+    pushHistory();
+    const last = L.cuts[L.cuts.length - 1];
+    const sd = srcDur(L);
+    const s0 = last ? Math.min(sd - 0.1, last.src_out) : 0;
+    L.cuts.push({src_in: Math.round(s0 * 10) / 10,
+                 src_out: Math.round(Math.min(sd, s0 + 2) * 10) / 10,
+                 speed: 1});
+    normalizeLayer(L); save(); renderAll(); queueProxy();
+  });
+  p.appendChild(addC);
+
+  const rm = document.createElement("button");
+  rm.textContent = "✂ Remove 1s at playhead";
+  rm.style.marginLeft = "6px";
+  rm.addEventListener("click", () => {
+    const tL = T - L.in;
+    const seg = segAt(L, tL);
+    if(!seg || seg.kind !== "cut"){
+      status("playhead is not over a cut segment", true); return;
+    }
+    pushHistory();
+    const c = L.cuts[seg.i];
+    const mid = seg.src_in + (tL - seg.tl0) * seg.speed;
+    const a = {src_in: c.src_in, src_out: mid - 0.5, speed: c.speed};
+    const b = {src_in: mid + 0.5, src_out: c.src_out, speed: c.speed};
+    const repl = [a, b].filter(x => (x.src_out - x.src_in) > 0.15);
+    L.cuts.splice(seg.i, 1, ...repl);
+    // fix hold at_cut indices after the splice
+    (L.holds || []).forEach(h => {
+      if(h.at_cut != null && h.at_cut > seg.i) h.at_cut += repl.length - 1;
+    });
+    normalizeLayer(L); save(); renderAll(); queueProxy();
+    status("removed 1s at source " + mid.toFixed(1) + "s");
+  });
+  p.appendChild(rm);
+
+  const hs = document.createElement("div");
+  hs.className = "sect"; hs.textContent = "Holds (freeze frames)";
+  p.appendChild(hs);
+  if(!L.holds) L.holds = [];
+  L.holds.forEach((h, i) => {
+    const r = document.createElement("div"); r.className = "cutrow";
+    r.innerHTML = '<span class="clab">frame @</span>';
+    const mk = (key, step) => {
+      const inp = document.createElement("input");
+      inp.type = "number"; inp.step = step; inp.value = h[key];
+      inp.addEventListener("change", () => {
+        pushHistory(); h[key] = parseFloat(inp.value);
+        normalizeLayer(L); save(); renderAll(); queueProxy();
+      });
+      return inp;
+    };
+    r.appendChild(mk("at_src", "0.1"));
+    const dl = document.createElement("span"); dl.className = "clab"; dl.textContent = "for";
+    r.appendChild(dl); r.appendChild(mk("dur", "0.1"));
+    const dl2 = document.createElement("span"); dl2.className = "clab"; dl2.textContent = "s";
+    r.appendChild(dl2);
+    const del = document.createElement("button"); del.textContent = "✕";
+    del.addEventListener("click", () => {
+      pushHistory(); L.holds.splice(i, 1);
+      normalizeLayer(L); save(); renderAll(); queueProxy();
+    });
+    r.appendChild(del);
+    p.appendChild(r);
+  });
+  const hb = document.createElement("button");
+  hb.textContent = "❄ Hold frame at playhead (1s)";
+  hb.addEventListener("click", () => {
+    const tL = T - L.in;
+    const seg = segAt(L, tL);
+    if(!seg || seg.kind !== "cut"){
+      status("playhead is not over a cut segment", true); return;
+    }
+    pushHistory();
+    const srcT = Math.round((seg.src_in + (tL - seg.tl0) * seg.speed) * 10) / 10;
+    L.holds.push({at_src: srcT, dur: 1.0, at_cut: seg.i});
+    normalizeLayer(L); save(); renderAll(); queueProxy();
+    status("holding source frame " + srcT.toFixed(1) + "s");
+  });
+  p.appendChild(hb);
+}
+
+/* ---- audio (Phase 3) ---- */
+function absSrcA(a){
+  if(!a || !a.src) return null;
+  return a.src.startsWith("/") ? a.src
+    : COMP_PATH.replace(/\/[^/]*$/, "/") + a.src;
+}
+function textRow(parent, label, obj, key){
+  const row = document.createElement("div"); row.className = "prow";
+  const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = label;
+  const inp = document.createElement("input");
+  inp.type = "text"; inp.value = obj[key] || "";
+  inp.style.cssText = "flex:1;min-width:0;padding:6px;border-radius:6px;" +
+    "border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;";
+  inp.addEventListener("change", () => {
+    pushHistory(); obj[key] = inp.value;
+    save(); queueProxy(); renderAudio(); renderTimeline();
+  });
+  row.appendChild(nm); row.appendChild(inp);
+  parent.appendChild(row);
+}
+function renderAudio(){
+  const p = $("panel-audio"); p.innerHTML = "";
+  if(!COMP.audio) COMP.audio = [];
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.textContent = "Audio layers mix to a single track (gain, ducking). " +
+    "No canvas representation — timing only. Drag bars on the timeline to move.";
+  p.appendChild(hint);
+  COMP.audio.forEach((a, i) => {
+    const fs = document.createElement("fieldset");
+    const lg = document.createElement("legend");
+    lg.textContent = a.id || ("audio" + i);
+    const del = document.createElement("button"); del.textContent = "remove";
+    del.addEventListener("click", () => {
+      pushHistory(); COMP.audio.splice(i, 1);
+      save(); queueProxy(); renderAudio(); renderTimeline();
+    });
+    lg.appendChild(del); fs.appendChild(lg);
+    textRow(fs, "Id", a, "id");
+    textRow(fs, "Src", a, "src");
+    const ap = PROBES[absSrcA(a)];
+    if(ap && ap.dur){
+      const kv = document.createElement("div"); kv.className = "kv";
+      kv.innerHTML = "Source duration: <b>" + ap.dur.toFixed(1) + "s</b>";
+      fs.appendChild(kv);
+    }
+    numRow(fs, "In (s)", a, "in", {min: 0, step: 0.1});
+    numRow(fs, "Out (s)", a, "out", {min: 0.1, step: 0.1});
+    sliderRow(fs, "Gain", a, "gain", 0, 2, 0.05);
+    numRow(fs, "Src offset", a, "src_in", {min: 0, step: 0.1});
+    const others = [["", "none"]].concat(
+      COMP.audio.filter((x, j) => j !== i && x.id).map(x => [x.id, x.id]));
+    selectRow(fs, "Duck by", a, "duck_by", others);
+    p.appendChild(fs);
+  });
+  const add = document.createElement("button");
+  add.textContent = "+ Add audio layer";
+  add.addEventListener("click", () => {
+    pushHistory();
+    COMP.audio.push({id: "a" + (COMP.audio.length + 1), src: "",
+      in: 0, out: COMP.duration, gain: 1});
+    save(); queueProxy(); renderAudio(); renderTimeline();
+  });
+  p.appendChild(add);
+}
+function positionBar(bar, t0, t1){
+  const dur = COMP.duration;
+  bar.style.left = (t0 / dur * 100) + "%";
+  bar.style.width = (Math.max(0.5, t1 - t0) / dur * 100) + "%";
+}
+function renderAudioLanes(){
+  const box = $("audio-lanes"); box.innerHTML = "";
+  if(!COMP.audio || !COMP.audio.length) return;
+  const lab = document.createElement("div");
+  lab.className = "sect"; lab.textContent = "Audio";
+  box.appendChild(lab);
+  COMP.audio.forEach((a, i) => {
+    const row = document.createElement("div"); row.className = "lane";
+    const nm = document.createElement("div");
+    nm.className = "lname"; nm.textContent = a.id || ("audio" + i);
+    const wrap = document.createElement("div"); wrap.className = "lbar-wrap";
+    const bar = document.createElement("div"); bar.className = "lbar";
+    positionBar(bar, a.in || 0, a.out || 0);
+    bar.addEventListener("pointerdown", e => startAudioDrag(e, a, bar, wrap));
+    wrap.appendChild(bar); row.appendChild(nm); row.appendChild(wrap);
+    box.appendChild(row);
+  });
+}
+function startAudioDrag(e, a, bar, wrap){
+  e.preventDefault(); e.stopPropagation();
+  pushHistory();
+  const span = (a.out || 0) - (a.in || 0);
+  const x0 = e.touches ? e.touches[0].clientX : e.clientX;
+  const r = wrap.getBoundingClientRect();
+  const in0 = a.in || 0;
+  const move = ev => {
+    const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const dt = (x - x0) / r.width * COMP.duration;
+    const ni = Math.max(0, round2(in0 + dt));
+    a.in = ni; a.out = round2(ni + span);
+    positionBar(bar, a.in, a.out);
+  };
+  const up = () => {
+    save(); queueProxy(); renderTimeline(); renderAudio();
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
+}
+
+/* ---- render ---- */
+$("btn-render").addEventListener("click", async () => {
+  const btn = $("btn-render");
+  btn.disabled = true;
+  status("rendering full-res…");
+  try{
+    const j = await api("/api/render", "POST", {comp: COMP});
+    const box = $("render-out");
+    box.hidden = false;
+    box.innerHTML = "Done in " + j.duration.toFixed(2) + "s — <b>" +
+      esc(j.path) + '</b><br><a href="' + j.url + '" download>Download mp4</a>';
+    status("");
+  }catch(e){ status("render failed: " + e.message, true); }
+  btn.disabled = false;
+});
+
+/* ---- boot ---- */
+function renderAll(){
+  renderLayers(); renderInspector(); renderCuts(); renderAudio(); renderTimeline();
+  updateSelbox();
+  const r = stage.getBoundingClientRect();
+  stage.style.height = (r.width * COMP.height / COMP.width) + "px";
+}
+function preloadNats(){
+  COMP.layers.forEach(L => {
+    if(L.type === "image" && !L._nat){
+      const img = new Image();
+      img.onload = () => {
+        L._nat = {w: img.naturalWidth, h: img.naturalHeight};
+        if(L.id === SEL) updateSelbox();
+      };
+      const src = L.src.startsWith("/") ? L.src
+        : COMP_PATH.replace(/\/[^/]*$/, "/") + L.src;
+      img.src = "/api/file?path=" + encodeURIComponent(src);
+    }
+  });
+}
+async function init(){
+  try{
+    const j = await api("/api/comp");
+    COMP = j.comp; COMP_PATH = j.path; PROBES = j.probes || {};
+    $("comp-name").textContent = COMP_PATH.split("/").pop() +
+      " · " + COMP.width + "×" + COMP.height;
+    hist = []; future = [];
+    renderAll(); syncUndo(); preloadNats();
+    await doProxy();
+  }catch(e){ status("load failed: " + e.message, true); }
+}
+init();
+</script>
+</body>
+</html>
